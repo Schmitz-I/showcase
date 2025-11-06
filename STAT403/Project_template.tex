@@ -1,0 +1,244 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Final Project, STAT/Q Sci 403},
+  pdfauthor={Ilse Schmitz},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Final Project, STAT/Q Sci 403}
+\author{Ilse Schmitz}
+\date{June 04 2025}
+
+\begin{document}
+\maketitle
+
+\subsection{Introduction}\label{introduction}
+
+\section{Model Selection}\label{model-selection}
+
+In this case, I decided to use AIC to help select which parameters to
+use, however this is the wrong way to select features. I chose AIC since
+the added flexibility is preferable to a smaller dataset. Whether the
+training data set is small may be up to interpretation, but given it's
+context in real estate, I've deemed the dataset small given the vast
+amount of real estate data that exists in the world.
+
+\begin{verbatim}
+##   (Intercept)         price      bedrooms     bathrooms   sqft_living 
+## -1.012988e+01  3.254803e-07  1.462580e-02  3.442956e-03 -1.786466e-03 
+##      sqft_lot        floors    waterfront          view     condition 
+##  2.082069e-06  5.017800e-02  1.511741e-01 -1.160520e-02  2.692756e-02 
+##         grade    sqft_above sqft_basement      yr_built  yr_renovated 
+##  6.211073e-02  1.730939e-03  1.797815e-03 -1.014626e-03  3.562950e-05 
+##       zipcode sqft_living15    sqft_lot15 
+##  1.720314e-04  7.498896e-05 -2.298239e-06
+\end{verbatim}
+
+Based on the information here, and using AIC as our criteria, from
+forward selection we end up with 11 predictors,~ (grade, yr\_built,
+sqft\_living15, sqft\_lot15, floors, bedrooms, sqft\_lot, condition,
+yr\_renovated, zipcode, sqft\_above)
+
+and with backward selection we end up with 13 predictors,~ (grade,
+yr\_built, sqft\_living15, sqft\_lot15, floors, bedrooms, sqft\_lot,
+condition, yr\_renovated, zipcode, sqft\_living, view, sqft\_basement)
+
+However, as stated previously, this is the wrong way to select the
+variables in this case. As such, we use prior knowledge to estimate
+which features to use in our regression and prediction tasks.
+
+By constructing a series of graphs comparing the log10price and price to
+all other features, I selected features to utilize based on appearence
+and whether there appeared to be a relationship between the two. the
+features I chose to keep were:
+
+sqft\_living15
+
+sqft\_above
+
+grade
+
+floors
+
+sqft\_living
+
+bathrooms
+
+bedrooms
+
+The features I chose to discard were:
+
+sqft\_lot15
+
+zipcode
+
+yr\_renovated
+
+yr\_built
+
+condition
+
+waterfront
+
+sqft\_lot
+
+sqft\_basement
+
+view
+
+These graphs can be found at the bottom of this report, in order to not
+impede reading, as there are 32 in total.
+
+\pagebreak
+
+\section{Regression Task}\label{regression-task}
+
+\begin{verbatim}
+##       5%      95% 
+## 4.704351 4.906639 
+##            5%           95% 
+## -1.604774e-06  6.162290e-05 
+##            5%           95% 
+## -7.730599e-05  5.372580e-07 
+##        5%       95% 
+## 0.0761488 0.1106130 
+##           5%          95% 
+## -0.063306602  0.002099521 
+##           5%          95% 
+## 5.545086e-05 1.382196e-04 
+##          5%         95% 
+## -0.02220956  0.03657248 
+##          5%         95% 
+## -0.02007013  0.01630754
+\end{verbatim}
+
+\includegraphics{Project_template_files/figure-latex/unnamed-chunk-3-1.pdf}
+\includegraphics{Project_template_files/figure-latex/unnamed-chunk-3-2.pdf}
+
+For computing the Gaussian interval, two plots have been provided, one
+including the intercept, and one without, in order to better interpret
+the differences between the confidence intervals and the regression
+coefficients. Blue is the Gaussian confidence intervals, and red is the
+bootstrap. Based on these graphs, we can see the bedrooms and floors
+features seem to have the most variation, with grade and floors second.
+All three features dealing with square footage have shockingly small
+confidence intervals, implying very high correlation between price and
+square footage of at least the three different types included within
+this model.
+
+For the Bootstrap model, our confidence intervals follow very similar
+patterns, with the only notable exception being the interval of the
+bedroom and bathroom coefficients being distinctly larger. Additionally,
+much like the Gaussian CI's, there is a strong confidence in the square
+footage features and their ability to predict price, which lends
+credence to those variables being the best indicators.
+
+\pagebreak
+
+\section{Conformal Prediction (Jackknife+)
+Task}\label{conformal-prediction-jackknife-task}
+
+\includegraphics{Project_template_files/figure-latex/unnamed-chunk-4-1.pdf}
+
+For the Guess.dat, the MSE for test\_1 was based on the MSE of the
+training data when sent through the regression model, using both the
+price and the log10price. Based on prior experience, if the model has
+been correctly set up test sets usually score a higher MSE than ther
+training counterparts, but it does tend to be close. As such, my guess
+for the MSE of the log10price is 0.9, rounding up the existing MSE from
+the training data.
+
+\begin{verbatim}
+## [1] 57726344874
+\end{verbatim}
+
+\begin{verbatim}
+## [1] 0.08743939
+\end{verbatim}
+
+We know the MSE of a test set is very likely to be larger than the MSE
+of the training set, and based on this, I would assume the MSE is around
+60,000,000,000, close to the MSE of the training set, but slightly
+larger.~ For the confidence interval, We can use the coverage of the
+test\_2 set as a basis for the true coverage. I would suspect there will
+be some variability, but for the sake of a clean guess, I would be the
+true coverage would be around 0.935, to match the existing prediction
+data.
+
+\begin{verbatim}
+## [1] 0.935
+\end{verbatim}
+
+\subsubsection{Additional graphs}\label{additional-graphs}
+
+\includegraphics{Project_template_files/figure-latex/unnamed-chunk-7-1.pdf}
+\includegraphics{Project_template_files/figure-latex/unnamed-chunk-7-2.pdf}
+\includegraphics{Project_template_files/figure-latex/unnamed-chunk-7-3.pdf}
+\includegraphics{Project_template_files/figure-latex/unnamed-chunk-7-4.pdf}
+\includegraphics{Project_template_files/figure-latex/unnamed-chunk-7-5.pdf}
+\includegraphics{Project_template_files/figure-latex/unnamed-chunk-7-6.pdf}
+\includegraphics{Project_template_files/figure-latex/unnamed-chunk-7-7.pdf}
+\includegraphics{Project_template_files/figure-latex/unnamed-chunk-7-8.pdf}
+
+\end{document}

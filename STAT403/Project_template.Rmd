@@ -1,0 +1,270 @@
+---
+title: 'Final Project, STAT/Q Sci 403'
+author: "Ilse Schmitz"
+date: "`r format(Sys.time(), '%B %d %Y')`"
+output: 
+   pdf_document: 
+      keep_tex: yes
+latex_engine: pdflatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Introduction
+
+```{r}
+test_1 = read.table('C:/Users/User/Documents/School/Q SCI 403/FInal_project/403_test-1.dat')
+test_2 = read.table('C:/Users/User/Documents/School/Q SCI 403/FInal_project/403_test-2.dat')
+train = read.table('C:/Users/User/Documents/School/Q SCI 403/FInal_project/403_train.dat')
+```
+
+# Model Selection
+In this case, I decided to use AIC to help select which parameters to use, 
+however this is the wrong way to select features. I chose AIC since the added 
+flexibility is preferable to a smaller dataset. Whether the training data set is 
+small may be up to interpretation, but given it's context in real estate, I've 
+deemed the dataset small given the vast amount of real estate data that exists 
+in the world. 
+
+```{r}
+# Initial models
+fit_full <- lm(log10price~., data = train)
+fit_null <- lm(log10price~1, data = train)
+fit_full$coefficients
+# summary(fit_full)
+
+# AIC fit
+F_fit = step(fit_null, 
+             scope=list(lower=fit_null, upper=fit_full), 
+             trace=F,
+             direction='forward')
+# F_fit
+
+B_fit = step(fit_full, 
+             scope=list(lower=fit_null, upper=fit_full), 
+             trace=F,
+             direction='backward')
+# B_fit
+
+# # BIC fit, for comparison
+# B_fit_bic = step(fit_full, 
+#                  scope=list(lower=fit_null, upper=fit_full), 
+#                  trace=F,
+#                  direction="backward", 
+#                  k=log(nrow(train)))
+# B_fit_bic
+# F_fit_bic = step(fit_null, 
+#                  scope=list(lower=fit_null,upper=fit_full), 
+#                  trace=F,
+#                  direction="forward", 
+#                  k=log(nrow(train)))
+# F_fit_bic
+```
+
+Based on the information here, and using AIC as our criteria, from forward 
+selection we end up with 11 predictors,\ 
+(grade, yr_built, sqft_living15, sqft_lot15, floors, bedrooms, sqft_lot, condition, yr_renovated, zipcode, sqft_above)
+
+and with backward selection we end up with 13 predictors,\ 
+(grade, yr_built, sqft_living15, sqft_lot15, floors, bedrooms, sqft_lot, condition, yr_renovated, zipcode, sqft_living, view, sqft_basement)
+
+However, as stated previously, this is the wrong way to select the variables in this case. As such, we use prior knowledge to estimate which features to use in our regression and prediction tasks. 
+
+By constructing a series of graphs comparing the log10price and price to all other features, I selected features to utilize based on appearence and whether there appeared to be a relationship between the two. the features I chose to keep were: 
+<ul>
+  <li>sqft_living15</li>
+  <li>sqft_above</li>
+  <li> grade</li>
+  <li> floors</li>
+  <li> sqft_living</li>
+  <li> bathrooms</li>
+  <li> bedrooms</li>
+</ul>
+
+The features I chose to discard were: 
+<ul>
+  <li> sqft_lot15</li>
+  <li> zipcode</li>
+  <li> yr_renovated</li>
+  <li> yr_built</li>
+  <li> condition</li>
+  <li> waterfront</li>
+  <li> sqft_lot</li>
+  <li> sqft_basement</li>
+  <li> view</li>
+</ul>
+
+These graphs can be found at the bottom of this report, in order to not impede reading, as there are 32 in total.
+
+
+\pagebreak
+# Regression Task
+
+```{r}
+
+regress_model <- lm(log10price ~ sqft_living15 + sqft_above + grade + floors + 
+                      sqft_living + bathrooms + bedrooms, data = train)
+
+# Regular
+a = confint.default(regress_model, level = 0.9)
+
+coeff <- regress_model$coefficients
+
+# Bootstrap
+B = 500
+C = 8 # dependent on number of features + intercept
+
+{n = nrow(train)
+  coeff_BT_lemp = matrix(NA, nrow=B, ncol=C) 
+  for(i_BT in 1:B){
+    w = sample(n,n,replace=T)
+    samp = train[w,]
+    fit_BT = lm(log10price ~ sqft_living15 + sqft_above + grade + floors + 
+                      sqft_living + bathrooms + bedrooms, data = samp)
+    coeff_BT_lemp[i_BT,] = fit_BT$coefficients
+  }
+}
+
+cfs <- matrix(, nrow = 8, ncol = 2)
+for (i in 1:C){
+  cf <- quantile(coeff_BT_lemp[,i], c(0.05,0.95))
+  cfs[i, 1] <- cf[1]
+  cfs[i, 2] <- cf[2]
+  print(cf)
+}
+
+plot(coeff)
+lines(cfs[,1], col='red')
+lines(cfs[,2], col='red')
+lines(a[,1], col='blue')
+lines(a[,2], col='blue')
+
+plot(coeff[-1], ylim = c(-0.07, 0.11))
+lines(cfs[-1,1], col='red')
+lines(cfs[-1,2], col='red')
+lines(a[-1,1], col='blue')
+lines(a[-1,2], col='blue')
+
+
+# Write test_1 predictions to file
+
+y_pred = predict(regress_model, test_1, interval = "prediction")
+y_pred = y_pred[,1]
+write.table(y_pred, file = "y.dat", sep="\t", row.names=FALSE, col.names=FALSE)
+
+```
+
+  For computing the Gaussian interval, two plots have been provided, one including the intercept, and one without, in order to better interpret the differences between the confidence intervals and the regression coefficients.
+  Blue is the Gaussian confidence intervals, and red is the bootstrap. Based on these graphs, we can see the bedrooms and floors features seem to have the most variation, with grade and floors second. All three features dealing with square footage have shockingly small confidence intervals, implying very high correlation between price and square footage of at least the three different types included within this model. 
+  
+  For the Bootstrap model, our confidence intervals follow very similar patterns, with the only notable exception being the interval of the bedroom and bathroom coefficients being distinctly larger. Additionally, much like the Gaussian CI's, there is a strong confidence in the square footage features and their ability to predict price, which lends credence to those variables being the best indicators. 
+
+\pagebreak
+# Conformal Prediction (Jackknife+) Task
+
+```{r}
+
+cp_model <- lm(log10price ~ grade + sqft_living + bathrooms + bedrooms, data = train)
+# Most likely : bathrooms, bedrooms, grade
+# least likely : sqft_lot, sqft_basement 
+
+jackknife_plus <- function(train, test, alpha){
+  # Parameters
+  CI <- matrix(, nrow = nrow(test), ncol = 2)
+  residuals <- matrix(, nrow = 1, ncol = nrow(train))
+  predictions <- matrix(, nrow = nrow(test), ncol = nrow(train))
+  
+  for (i in 1:nrow(train)) {
+    # Generate LOO model
+    model <- lm(log10price ~ grade + sqft_living + bathrooms + bedrooms, 
+               data=train[-i,])
+    
+    # Compute residual
+    y_pred_train <- predict(model, train[i,], interval = "prediction")
+    res = abs(train[i, 'log10price'] - y_pred_train[1])
+    residuals[i] = res
+    
+    for (j in 1:nrow(test)) {
+      y_pred_test <- predict(model, test[j,], interval = "prediction")
+      predictions[j,i] = y_pred_test[1] # wrong
+    }
+  }
+
+  # Alpha intervals
+  lower = alpha / 2 * nrow(train)
+  upper = (1 - alpha/2) * nrow(train)
+  
+  for (k in 1:nrow(predictions)) {
+    a_unord = predictions[k,] - residuals
+    b_unord = predictions[k,] + residuals
+    
+    a = a_unord[order(a_unord)]
+    b = b_unord[order(b_unord)] 
+
+    CI[k, 1] = a[lower]
+    CI[k, 2] = b[upper]
+  }
+  return (CI)
+}
+
+
+conf <- jackknife_plus(train, test_2, 0.1) 
+
+y_true = train['log10price']
+y_pred = predict(cp_model, test_2, interval = "prediction")
+
+# plot(x=1:nrow(y_true), y=y_true$log10price, col='red')
+plot(x=1:nrow(y_pred), y=y_pred[,1], lwd=2)
+
+for (i in 1:nrow(conf)){
+  a = conf[i, 1]
+  b = conf[i, 2]
+  segments(i, a, i, b, col='red')
+}
+
+# Write test_2 predictions to file
+conf_expon = 10^conf
+write.table(conf_expon, file = "CI.dat", sep=",", row.names=FALSE, col.names=FALSE)
+
+```
+
+  For the Guess.dat, the MSE for test_1 was based on the MSE of the training data when sent through the regression model, using both the price and the log10price. Based on prior experience, if the model has been correctly set up test sets usually score a higher MSE than ther training counterparts, but it does tend to be close. As such, my guess for the MSE of the log10price is 0.9, rounding up the existing MSE from the training data. 
+```{r}
+
+temp <- predict(regress_model, train, interval='prediction')
+fit = temp[,1]
+fit = 10^fit
+print(mean((fit-train$price)^2))
+print(mean((temp-train$log10price)^2))
+
+```
+
+  We know the MSE of a test set is very likely to be larger than the MSE of the training set, and based on this, I would assume the MSE is around 60,000,000,000, close to the MSE of the training set, but slightly larger.\ 
+  For the confidence interval, We can use the coverage of the test_2 set as a basis for the true coverage. I would suspect there will be some variability, but for the sake of a clean guess, I would be the true coverage would be around 0.935, to match the existing prediction data. 
+  
+```{r}
+y_true = train['log10price']
+y_pred = predict(cp_model, test_2, interval = "prediction")
+
+sum = 0
+for (i in 1:nrow(conf)){
+  if ((y_pred[i, 1] <= b) & (y_pred[i, 1] >= a)) {
+    sum = sum + 1
+  }
+}
+print(sum / nrow(conf))
+
+```
+
+### Additional graphs
+
+```{r}
+par(mfrow = c(2, 2))
+
+for (i in 2:(ncol(train) - 1)) {
+  plot(x=train[,i], y=train$log10price, xlab=colnames(train)[i]) 
+  plot(x=train[,i], y=train$price, xlab=colnames(train)[i]) 
+}
+```
